@@ -4,6 +4,7 @@ export interface ProductInfo {
   width: number;
   height: number;
   weight: number;
+  variations: string[]; // Novo
 }
 
 export interface CostInfo {
@@ -38,6 +39,8 @@ export interface ProductImportData {
   adFee: number;
   marketing: number;
   storage: number;
+  returnRate: number; // Novo
+  variations: string[]; // Novo
 }
 
 export interface MarketplaceDetail {

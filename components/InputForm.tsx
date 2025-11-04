@@ -9,6 +9,15 @@ interface InputFormProps {
   isLoading: boolean;
 }
 
+const brazilianMarketplaceCategories = [
+    "Acessórios para Veículos", "Agro", "Alimentos e Bebidas", "Animais", "Antiguidades e Coleções", "Arte, Papelaria e Armarinho",
+    "Bebês", "Beleza e Cuidado Pessoal", "Brinquedos e Hobbies", "Calçados, Roupas e Bolsas", "Câmeras e Acessórios",
+    "Carros, Motos e Outros", "Casa, Móveis e Decoração", "Celulares e Telefones", "Construção", "Eletrodomésticos",
+    "Eletrônicos, Áudio e Vídeo", "Esportes e Fitness", "Ferramentas", "Festas e Lembrancinhas", "Games",
+    "Imóveis", "Indústria e Comércio", "Informática", "Ingressos", "Instrumentos Musicais", "Joias e Relógios",
+    "Livros, Revistas e Comics", "Música, Filmes e Seriados", "Saúde", "Serviços", "Outras categorias"
+];
+
 const InputGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">{title}</h3>
@@ -83,12 +92,14 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
         width: data.width || formData.width,
         height: data.height || formData.height,
         weight: data.weight || formData.weight,
+        variations: data.variations || formData.variations,
         sellingPrice: data.sellingPrice || formData.sellingPrice,
         acquisition: data.acquisition || formData.acquisition,
         packagingCost: data.packagingCost || formData.packagingCost,
         adFee: data.adFee || formData.adFee,
         marketing: data.marketing || formData.marketing,
         storage: data.storage || formData.storage,
+        returnRate: data.returnRate || formData.returnRate,
       };
       setFormData(newFormData);
       setProductImageUrl(data.imageUrl || null);
@@ -171,13 +182,42 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
                 )}
             </div>
         </div>
+        
+        <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoria do Produto</label>
+            <input
+              type="text"
+              id="category"
+              name="category"
+              list="categories-datalist"
+              value={formData.category}
+              onChange={handleChange}
+              placeholder="Ex: Eletrônicos"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            />
+            <datalist id="categories-datalist">
+                {brazilianMarketplaceCategories.map(cat => <option key={cat} value={cat} />)}
+            </datalist>
+        </div>
 
-        <InputField label="Categoria do Produto" name="category" value={formData.category} onChange={handleChange} type="text" placeholder="Ex: Eletrônicos" />
         <InputField label="Preço de Venda (R$)" name="sellingPrice" value={formData.sellingPrice} onChange={handleChange} />
         <InputField label="Comprimento (cm)" name="length" value={formData.length} onChange={handleChange} />
         <InputField label="Largura (cm)" name="width" value={formData.width} onChange={handleChange} />
         <InputField label="Altura (cm)" name="height" value={formData.height} onChange={handleChange} />
         <InputField label="Peso (kg)" name="weight" value={formData.weight} onChange={handleChange} step="0.001" />
+
+        {formData.variations && formData.variations.length > 0 && (
+            <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Variações Encontradas</label>
+                <div className="flex flex-wrap gap-2 p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
+                    {formData.variations.map((variation, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                            {variation}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        )}
       </InputGroup>
 
       <InputGroup title="Custos, Taxas e Estratégia">

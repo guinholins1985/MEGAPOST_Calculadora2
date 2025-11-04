@@ -12,12 +12,21 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
     Analise o produto com base no seguinte ${isUrl ? 'URL' : 'descrição'} e extraia as informações solicitadas.
     Identificador: ${identifier}
     
-    Além das informações básicas (categoria, dimensões, peso, preço, imagem), estime também os seguintes custos em BRL, baseando-se no tipo de produto e no seu preço de venda:
+    Extraia as seguintes informações:
+    - Categoria do produto (category)
+    - Dimensões: comprimento (length), largura (width), altura (height) em cm.
+    - Peso (weight) em kg. Seja o mais preciso possível.
+    - Preço de venda (sellingPrice) em BRL.
+    - URL da imagem principal (imageUrl).
+    - Variações do produto (variations), como cores, tamanhos, etc. Se não houver, retorne um array vazio.
+
+    Além disso, estime os seguintes custos em BRL e taxas em porcentagem, baseando-se no tipo de produto e no seu preço de venda:
     - Custo de aquisição (acquisition)
     - Custo de embalagem (packagingCost)
     - Taxa de anúncio (adFee)
     - Custo com marketing (marketing)
     - Custo de armazenagem (storage)
+    - Taxa de devolução (returnRate) em porcentagem (ex: 3 para 3%).
 
     Forneça a resposta em formato JSON. Não inclua nenhum texto antes ou depois do objeto JSON.
     Se um valor não puder ser encontrado, use um padrão razoável ou 0. Para dimensões e peso, forneça estimativas realistas se não forem mencionadas explicitamente.
@@ -38,8 +47,10 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
       adFee: { type: Type.NUMBER, description: 'Custo estimado com taxa de anúncio em BRL' },
       marketing: { type: Type.NUMBER, description: 'Custo estimado com marketing em BRL' },
       storage: { type: Type.NUMBER, description: 'Custo estimado de armazenagem em BRL' },
+      returnRate: { type: Type.NUMBER, description: 'Taxa de devolução estimada em porcentagem (ex: 3 para 3%)' },
+      variations: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Variações do produto como cor, tamanho, etc.' },
     },
-    required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl', 'acquisition', 'packagingCost', 'adFee', 'marketing', 'storage'],
+    required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl', 'acquisition', 'packagingCost', 'adFee', 'marketing', 'storage', 'returnRate', 'variations'],
   };
   
   try {
@@ -62,7 +73,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
 
 export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAnalysisResponse> {
     const prompt = `
-    Você é um consultor sênior de e-commerce especializado no mercado brasileiro. Sua tarefa é fornecer uma análise comparativa profissional e detalhada para a venda de um produto nos 4 principais marketplaces brasileiros: Mercado Livre, Amazon Brasil, Magazine Luiza e Shopee.
+    Você é um consultor sênior de e-commerce especializado no mercado brasileiro. Sua tarefa é fornecer uma análise comparativa profissional e detalhada para a venda de um produto nos 5 principais marketplaces brasileiros: Mercado Livre, Amazon Brasil, Magazine Luiza, Shopee e OLX.
 
     Dados do Produto e Financeiros:
     - Categoria: ${formData.category}
@@ -82,7 +93,7 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
         *   \`dimensions\`: As dimensões externas da embalagem (ex: "30x20x5 cm").
         *   \`type\`: O tipo e material de embalagem recomendados (ex: "Caixa de papelão pardo", "Envelope de segurança com plástico-bolha").
         *   \`reason\`: Uma breve explicação para sua escolha, considerando proteção e custos de envio.
-    3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza, Shopee). Cada objeto deve conter:
+    3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza, Shopee, OLX). Cada objeto deve conter:
         *   \`name\`: O nome do marketplace.
         *   \`feeRate\`: A taxa de comissão estimada como um decimal para esta categoria.
         *   \`shippingCost\`: O custo de envio estimado em BRL. Deve ser uma estimativa realista para o CEP de destino, considerando tanto os programas de logística da plataforma (como Mercado Envios Full/FBA) quanto os custos padrão dos Correios (PAC/SEDEX) como base de cálculo.

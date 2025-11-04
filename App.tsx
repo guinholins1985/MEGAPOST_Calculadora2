@@ -10,6 +10,7 @@ const initialFormData: FormData = {
   width: 0,
   height: 0,
   weight: 0,
+  variations: [],
   sellingPrice: 0,
   acquisition: 0,
   packagingCost: 0,
