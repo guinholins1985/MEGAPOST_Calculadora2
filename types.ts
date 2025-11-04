@@ -33,6 +33,11 @@ export interface ProductImportData {
   weight: number;
   sellingPrice: number;
   imageUrl: string;
+  acquisition: number;
+  packagingCost: number;
+  adFee: number;
+  marketing: number;
+  storage: number;
 }
 
 export interface MarketplaceDetail {

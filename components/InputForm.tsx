@@ -5,7 +5,7 @@ import { autofillProductDetails } from '../services/geminiService';
 interface InputFormProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
-  onAnalyze: () => void;
+  onAnalyze: (data: FormData) => void;
   isLoading: boolean;
 }
 
@@ -76,16 +76,23 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
     setProductImageUrl(null);
     try {
       const data = await autofillProductDetails(productIdentifier);
-      setFormData(prev => ({
-        ...prev,
-        category: data.category || prev.category,
-        length: data.length || prev.length,
-        width: data.width || prev.width,
-        height: data.height || prev.height,
-        weight: data.weight || prev.weight,
-        sellingPrice: data.sellingPrice || prev.sellingPrice,
-      }));
+      const newFormData = {
+        ...formData,
+        category: data.category || formData.category,
+        length: data.length || formData.length,
+        width: data.width || formData.width,
+        height: data.height || formData.height,
+        weight: data.weight || formData.weight,
+        sellingPrice: data.sellingPrice || formData.sellingPrice,
+        acquisition: data.acquisition || formData.acquisition,
+        packagingCost: data.packagingCost || formData.packagingCost,
+        adFee: data.adFee || formData.adFee,
+        marketing: data.marketing || formData.marketing,
+        storage: data.storage || formData.storage,
+      };
+      setFormData(newFormData);
       setProductImageUrl(data.imageUrl || null);
+      onAnalyze(newFormData); // Trigger analysis automatically
     } catch (err) {
       if (err instanceof Error) {
         setAutofillError(err.message);
@@ -114,7 +121,7 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
                 />
                 <button
                     onClick={handleAutofill}
-                    disabled={isAutofilling}
+                    disabled={isAutofilling || isLoading}
                     className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2.5 text-center dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center shrink-0"
                 >
                     {isAutofilling ? (
@@ -123,9 +130,9 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           Preenchendo...
+                           Importando...
                         </>
-                    ) : 'Preencher Dados'}
+                    ) : 'Importar e Analisar'}
                 </button>
             </div>
              {autofillError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{autofillError}</p>}
@@ -219,8 +226,8 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
       
       <div className="pt-4 sticky bottom-0 bg-gray-50 dark:bg-gray-900 py-4">
         <button
-          onClick={onAnalyze}
-          disabled={isLoading}
+          onClick={() => onAnalyze(formData)}
+          disabled={isLoading || isAutofilling}
           className="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-lg px-5 py-3 text-center dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
         >
           {isLoading ? (

@@ -12,8 +12,15 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
     Analise o produto com base no seguinte ${isUrl ? 'URL' : 'descrição'} e extraia as informações solicitadas.
     Identificador: ${identifier}
     
+    Além das informações básicas (categoria, dimensões, peso, preço, imagem), estime também os seguintes custos em BRL, baseando-se no tipo de produto e no seu preço de venda:
+    - Custo de aquisição (acquisition)
+    - Custo de embalagem (packagingCost)
+    - Taxa de anúncio (adFee)
+    - Custo com marketing (marketing)
+    - Custo de armazenagem (storage)
+
     Forneça a resposta em formato JSON. Não inclua nenhum texto antes ou depois do objeto JSON.
-    Se um valor não puder ser encontrado, use um padrão razoável ou nulo. Para dimensões e peso, forneça estimativas realistas se não forem mencionadas explicitamente.
+    Se um valor não puder ser encontrado, use um padrão razoável ou 0. Para dimensões e peso, forneça estimativas realistas se não forem mencionadas explicitamente.
   `;
 
   const responseSchema = {
@@ -26,8 +33,13 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
       weight: { type: Type.NUMBER, description: 'Peso do produto em kg' },
       sellingPrice: { type: Type.NUMBER, description: 'Preço de venda do produto' },
       imageUrl: { type: Type.STRING, description: 'URL da imagem principal do produto' },
+      acquisition: { type: Type.NUMBER, description: 'Custo de aquisição estimado do produto em BRL' },
+      packagingCost: { type: Type.NUMBER, description: 'Custo estimado da embalagem em BRL' },
+      adFee: { type: Type.NUMBER, description: 'Custo estimado com taxa de anúncio em BRL' },
+      marketing: { type: Type.NUMBER, description: 'Custo estimado com marketing em BRL' },
+      storage: { type: Type.NUMBER, description: 'Custo estimado de armazenagem em BRL' },
     },
-    required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl'],
+    required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl', 'acquisition', 'packagingCost', 'adFee', 'marketing', 'storage'],
   };
   
   try {
@@ -50,7 +62,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
 
 export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAnalysisResponse> {
     const prompt = `
-    Você é um consultor sênior de e-commerce especializado no mercado brasileiro. Sua tarefa é fornecer uma análise comparativa profissional e detalhada para a venda de um produto nos 3 principais marketplaces brasileiros: Mercado Livre, Amazon Brasil e Magazine Luiza.
+    Você é um consultor sênior de e-commerce especializado no mercado brasileiro. Sua tarefa é fornecer uma análise comparativa profissional e detalhada para a venda de um produto nos 4 principais marketplaces brasileiros: Mercado Livre, Amazon Brasil, Magazine Luiza e Shopee.
 
     Dados do Produto e Financeiros:
     - Categoria: ${formData.category}
@@ -70,7 +82,7 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
         *   \`dimensions\`: As dimensões externas da embalagem (ex: "30x20x5 cm").
         *   \`type\`: O tipo e material de embalagem recomendados (ex: "Caixa de papelão pardo", "Envelope de segurança com plástico-bolha").
         *   \`reason\`: Uma breve explicação para sua escolha, considerando proteção e custos de envio.
-    3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza). Cada objeto deve conter:
+    3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza, Shopee). Cada objeto deve conter:
         *   \`name\`: O nome do marketplace.
         *   \`feeRate\`: A taxa de comissão estimada como um decimal para esta categoria.
         *   \`shippingCost\`: O custo de envio estimado em BRL. Deve ser uma estimativa realista para o CEP de destino, considerando tanto os programas de logística da plataforma (como Mercado Envios Full/FBA) quanto os custos padrão dos Correios (PAC/SEDEX) como base de cálculo.
