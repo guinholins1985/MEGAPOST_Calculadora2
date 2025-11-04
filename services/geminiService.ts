@@ -17,7 +17,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
     - Dimensões: comprimento (length), largura (width), altura (height) em cm.
     - Peso (weight) em kg. Seja o mais preciso possível.
     - Preço de venda (sellingPrice) em BRL.
-    - URL da imagem principal (imageUrl).
+    - URL da imagem principal (imageUrl). A URL deve ser completa (iniciar com https://), pública, e apontar diretamente para um arquivo de imagem (ex: .jpg, .png, .webp), não para uma página HTML.
     - Variações do produto (variations), como cores, tamanhos, etc. Se não houver, retorne um array vazio.
 
     Além disso, estime os seguintes custos em BRL e taxas em porcentagem, baseando-se no tipo de produto e no seu preço de venda:
