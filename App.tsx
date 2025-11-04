@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import { InputForm } from './components/InputForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
@@ -71,7 +72,7 @@ const App: React.FC = () => {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('An unknown error occurred.');
+        setError('Ocorreu um erro desconhecido.');
       }
     } finally {
       setIsLoading(false);

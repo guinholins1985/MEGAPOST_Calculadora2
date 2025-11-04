@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FormData } from '../types';
-import { getProductInfoFromUrl } from '../services/geminiService';
+import { autofillProductDetails } from '../services/geminiService';
 
 interface InputFormProps {
   formData: FormData;
@@ -42,9 +42,9 @@ const InputField: React.FC<{ label: string; name: keyof FormData; value: string 
 );
 
 export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onAnalyze, isLoading }) => {
-  const [importUrl, setImportUrl] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
+  const [productIdentifier, setProductIdentifier] = useState('');
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -66,16 +66,16 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
     }
   };
 
-  const handleImport = async () => {
-    if (!importUrl) {
-      setImportError('Por favor, insira uma URL.');
+  const handleAutofill = async () => {
+    if (!productIdentifier) {
+      setAutofillError('Por favor, insira uma URL ou descrição.');
       return;
     }
-    setIsImporting(true);
-    setImportError(null);
+    setIsAutofilling(true);
+    setAutofillError(null);
     setProductImageUrl(null);
     try {
-      const data = await getProductInfoFromUrl(importUrl);
+      const data = await autofillProductDetails(productIdentifier);
       setFormData(prev => ({
         ...prev,
         category: data.category || prev.category,
@@ -88,12 +88,12 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
       setProductImageUrl(data.imageUrl || null);
     } catch (err) {
       if (err instanceof Error) {
-        setImportError(err.message);
+        setAutofillError(err.message);
       } else {
-        setImportError('Ocorreu um erro desconhecido na importação.');
+        setAutofillError('Ocorreu um erro desconhecido ao preencher os dados.');
       }
     } finally {
-      setIsImporting(false);
+      setIsAutofilling(false);
     }
   };
 
@@ -101,34 +101,34 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
     <div className="w-full lg:w-1/2 p-4 space-y-6">
       <InputGroup title="Dados do Produto">
         <div className="md:col-span-2">
-            <label htmlFor="importUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Importar de URL (Opcional)</label>
+            <label htmlFor="productIdentifier" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Importar por URL ou Descrever Produto</label>
             <div className="flex items-center space-x-2">
                 <input
-                    type="url"
-                    id="importUrl"
-                    name="importUrl"
-                    value={importUrl}
-                    onChange={(e) => setImportUrl(e.target.value)}
-                    placeholder="Cole o link do produto aqui (Ex: Mercado Livre, Amazon)"
+                    type="text"
+                    id="productIdentifier"
+                    name="productIdentifier"
+                    value={productIdentifier}
+                    onChange={(e) => setProductIdentifier(e.target.value)}
+                    placeholder="Cole uma URL ou descreva. Ex: 'Smartphone Samsung S23 128GB'"
                     className="flex-grow bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 />
                 <button
-                    onClick={handleImport}
-                    disabled={isImporting}
+                    onClick={handleAutofill}
+                    disabled={isAutofilling}
                     className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2.5 text-center dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center shrink-0"
                 >
-                    {isImporting ? (
+                    {isAutofilling ? (
                         <>
-                           <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
-                           Importando...
+                           Preenchendo...
                         </>
-                    ) : 'Importar'}
+                    ) : 'Preencher Dados'}
                 </button>
             </div>
-             {importError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{importError}</p>}
+             {autofillError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{autofillError}</p>}
         </div>
 
         <div className="md:col-span-2">

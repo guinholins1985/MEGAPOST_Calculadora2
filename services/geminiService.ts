@@ -6,25 +6,26 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 const model = 'gemini-2.5-flash';
 
-export async function getProductInfoFromUrl(url: string): Promise<ProductImportData> {
+export async function autofillProductDetails(identifier: string): Promise<ProductImportData> {
+  const isUrl = identifier.startsWith('http://') || identifier.startsWith('https://');
   const prompt = `
-    Analyze the product page at the following URL and extract the requested information.
-    URL: ${url}
+    Analise o produto com base no seguinte ${isUrl ? 'URL' : 'descrição'} e extraia as informações solicitadas.
+    Identificador: ${identifier}
     
-    Provide the response in JSON format. Do not include any text before or after the JSON object.
-    If a value cannot be found, use a reasonable default or null.
+    Forneça a resposta em formato JSON. Não inclua nenhum texto antes ou depois do objeto JSON.
+    Se um valor não puder ser encontrado, use um padrão razoável ou nulo. Para dimensões e peso, forneça estimativas realistas se não forem mencionadas explicitamente.
   `;
 
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
-      category: { type: Type.STRING, description: 'Product category' },
-      length: { type: Type.NUMBER, description: 'Product length in cm' },
-      width: { type: Type.NUMBER, description: 'Product width in cm' },
-      height: { type: Type.NUMBER, description: 'Product height in cm' },
-      weight: { type: Type.NUMBER, description: 'Product weight in kg' },
-      sellingPrice: { type: Type.NUMBER, description: 'Product selling price' },
-      imageUrl: { type: Type.STRING, description: 'URL of the main product image' },
+      category: { type: Type.STRING, description: 'Categoria do produto' },
+      length: { type: Type.NUMBER, description: 'Comprimento do produto em cm' },
+      width: { type: Type.NUMBER, description: 'Largura do produto em cm' },
+      height: { type: Type.NUMBER, description: 'Altura do produto em cm' },
+      weight: { type: Type.NUMBER, description: 'Peso do produto em kg' },
+      sellingPrice: { type: Type.NUMBER, description: 'Preço de venda do produto' },
+      imageUrl: { type: Type.STRING, description: 'URL da imagem principal do produto' },
     },
     required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl'],
   };
@@ -43,42 +44,42 @@ export async function getProductInfoFromUrl(url: string): Promise<ProductImportD
     return JSON.parse(jsonText) as ProductImportData;
   } catch (error) {
     console.error("Error fetching product info from Gemini:", error);
-    throw new Error("Failed to extract product information from the URL. Please check the URL or try again.");
+    throw new Error("Não foi possível extrair as informações do produto. Verifique a URL/descrição ou tente novamente.");
   }
 }
 
 export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAnalysisResponse> {
     const prompt = `
-    You are a senior e-commerce consultant specializing in the Brazilian market. Your task is to provide a professional, in-depth comparative analysis for selling a product on the top 3 Brazilian marketplaces: Mercado Livre, Amazon Brasil, and Magazine Luiza.
+    Você é um consultor sênior de e-commerce especializado no mercado brasileiro. Sua tarefa é fornecer uma análise comparativa profissional e detalhada para a venda de um produto nos 3 principais marketplaces brasileiros: Mercado Livre, Amazon Brasil e Magazine Luiza.
 
-    Product and Financial Data:
-    - Category: ${formData.category}
-    - Dimensions (LxWxH cm): ${formData.length} x ${formData.width} x ${formData.height}
-    - Weight (kg): ${formData.weight}
-    - Selling Price (BRL): ${formData.sellingPrice}
-    - Acquisition Cost (BRL): ${formData.acquisition}
-    - Packaging Cost (BRL): ${formData.packagingCost}
-    - Desired Profit Margin: ${formData.desiredProfitMargin}%
-    - Destination State (Brazil): ${formData.state}
-    - Destination CEP (Postal Code for shipping simulation): ${formData.destinationCep}
+    Dados do Produto e Financeiros:
+    - Categoria: ${formData.category}
+    - Dimensões (CxLxA cm): ${formData.length} x ${formData.width} x ${formData.height}
+    - Peso (kg): ${formData.weight}
+    - Preço de Venda (BRL): ${formData.sellingPrice}
+    - Custo de Aquisição (BRL): ${formData.acquisition}
+    - Custo da Embalagem (BRL): ${formData.packagingCost}
+    - Margem de Lucro Desejada: ${formData.desiredProfitMargin}%
+    - Estado de Destino (Brasil): ${formData.state}
+    - CEP de Destino (para simulação de frete): ${formData.destinationCep}
 
-    Your analysis must be returned as a single JSON object with the following structure:
+    Sua análise deve ser retornada como um único objeto JSON com a seguinte estrutura:
 
-    1.  \`taxRate\`: Estimate the combined tax rate (ICMS, etc.) as a single decimal for this product and region.
-    2.  \`packageSuggestion\`: Suggest an optimal package. Include:
-        *   \`dimensions\`: The outer dimensions of the package (e.g., "30x20x5 cm").
-        *   \`type\`: The recommended packaging type and material (e.g., "Caixa de papelão pardo", "Envelope de segurança com plástico-bolha").
-        *   \`reason\`: A brief explanation for your choice, considering protection and shipping costs.
-    3.  \`marketplaceComparison\`: An array of objects, one for each marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza). Each object must contain:
-        *   \`name\`: The marketplace name.
-        *   \`feeRate\`: The estimated commission fee rate as a decimal for this category.
-        *   \`shippingCost\`: The estimated shipping cost in BRL for this product on this platform, considering their logistics programs (Mercado Envios, Amazon FBA, etc.) for the destination CEP.
-        *   \`shippingInfo\`: A brief explanation of their shipping program.
-        *   \`pros\`: An array of strings listing the advantages of selling this product on this platform.
-        *   \`cons\`: An array of strings listing the disadvantages.
-    4.  \`strategicRecommendation\`: A detailed, conclusive recommendation on which marketplace is the best choice for this specific product, justifying your choice based on the analysis. Also, include optimistic, realistic, and pessimistic sales scenarios for the recommended marketplace, considering the desired profit margin.
+    1.  \`taxRate\`: Estime a alíquota de imposto combinada (ICMS, etc.) como um único decimal para este produto e região.
+    2.  \`packageSuggestion\`: Sugira uma embalagem ideal. Inclua:
+        *   \`dimensions\`: As dimensões externas da embalagem (ex: "30x20x5 cm").
+        *   \`type\`: O tipo e material de embalagem recomendados (ex: "Caixa de papelão pardo", "Envelope de segurança com plástico-bolha").
+        *   \`reason\`: Uma breve explicação para sua escolha, considerando proteção e custos de envio.
+    3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza). Cada objeto deve conter:
+        *   \`name\`: O nome do marketplace.
+        *   \`feeRate\`: A taxa de comissão estimada como um decimal para esta categoria.
+        *   \`shippingCost\`: O custo de envio estimado em BRL. Deve ser uma estimativa realista para o CEP de destino, considerando tanto os programas de logística da plataforma (como Mercado Envios Full/FBA) quanto os custos padrão dos Correios (PAC/SEDEX) como base de cálculo.
+        *   \`shippingInfo\`: Uma breve explicação sobre o programa de frete deles.
+        *   \`pros\`: Um array de strings listando as vantagens de vender este produto nesta plataforma.
+        *   \`cons\`: Um array de strings listando as desvantagens.
+    4.  \`strategicRecommendation\`: Uma recomendação conclusiva e detalhada sobre qual marketplace é a melhor escolha para este produto específico, justificando sua escolha com base na análise. Inclua também cenários de vendas otimista, realista e pessimista para o marketplace recomendado, considerando a margem de lucro desejada.
 
-    Provide ONLY the JSON object in your response. Be extremely detailed and professional in your explanations.
+    Forneça APENAS o objeto JSON em sua resposta. Seja extremamente detalhado e profissional em suas explicações.
   `;
 
   const marketplaceDetailSchema = {
@@ -97,13 +98,13 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
-      taxRate: { type: Type.NUMBER, description: 'Estimated total tax rate as a decimal (e.g., 0.18 for 18%)' },
+      taxRate: { type: Type.NUMBER, description: 'Taxa de imposto total estimada como decimal (ex: 0.18 para 18%)' },
       packageSuggestion: {
         type: Type.OBJECT,
         properties: {
-          dimensions: { type: Type.STRING, description: 'Suggested package dimensions' },
-          type: { type: Type.STRING, description: 'Suggested package type and material' },
-          reason: { type: Type.STRING, description: 'Reason for the package suggestion' },
+          dimensions: { type: Type.STRING, description: 'Dimensões sugeridas para a embalagem' },
+          type: { type: Type.STRING, description: 'Tipo e material sugerido para a embalagem' },
+          reason: { type: Type.STRING, description: 'Justificativa para a sugestão de embalagem' },
         },
         required: ['dimensions', 'type', 'reason']
       },
@@ -111,7 +112,7 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
         type: Type.ARRAY,
         items: marketplaceDetailSchema,
       },
-      strategicRecommendation: { type: Type.STRING, description: 'Strategic recommendation and scenario analysis.' },
+      strategicRecommendation: { type: Type.STRING, description: 'Recomendação estratégica e análise de cenários.' },
     },
     required: ['taxRate', 'packageSuggestion', 'marketplaceComparison', 'strategicRecommendation'],
   };
@@ -130,6 +131,6 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
     return JSON.parse(jsonText) as GeminiAnalysisResponse;
   } catch (error) {
     console.error("Error getting financial analysis from Gemini:", error);
-    throw new Error("The AI failed to generate a financial analysis. Please check your input data or try again.");
+    throw new Error("A IA não conseguiu gerar uma análise financeira. Verifique os dados de entrada ou tente novamente.");
   }
 }
