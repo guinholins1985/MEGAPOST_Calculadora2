@@ -9,18 +9,23 @@ const model = 'gemini-2.5-flash';
 export async function autofillProductDetails(identifier: string): Promise<ProductImportData> {
   const isUrl = identifier.startsWith('http://') || identifier.startsWith('https://');
   const prompt = `
-    Analise o produto com base no seguinte ${isUrl ? 'URL' : 'descrição'} e extraia as informações solicitadas.
-    Identificador: ${identifier}
+    Sua tarefa é analisar um produto e retornar seus detalhes em formato JSON.
+    O produto é identificado por: "${identifier}".
+
+    ${isUrl 
+      ? `Isto é uma URL de um anúncio de marketplace. Aja como um extrator de dados preciso. Sua prioridade máxima é extrair os valores EXATOS que estão na página. NÃO invente valores se eles estiverem disponíveis no anúncio. Para dimensões e peso, procure exaustivamente na ficha técnica ou descrição; somente se for absolutamente impossível encontrar, você pode estimar.`
+      : `Isto é uma descrição de texto. Extraia as informações da descrição. Se alguns dados não estiverem presentes, estime valores realistas com base no produto descrito.`
+    }
     
     Extraia as seguintes informações:
-    - Categoria do produto (category)
+    - Categoria do produto (category): A categoria exata listada no anúncio.
     - Dimensões: comprimento (length), largura (width), altura (height) em cm.
-    - Peso (weight) em kg. Seja o mais preciso possível.
-    - Preço de venda (sellingPrice) em BRL.
-    - URL da imagem principal (imageUrl). A URL deve ser completa (iniciar com https://), pública, e apontar diretamente para um arquivo de imagem (ex: .jpg, .png, .webp), não para uma página HTML.
-    - Variações do produto (variations), como cores, tamanhos, etc. Se não houver, retorne um array vazio.
+    - Peso (weight) em kg.
+    - Preço de venda (sellingPrice) em BRL: O preço principal e visível do produto.
+    - URL da imagem principal (imageUrl): URL completa, pública e direta para o arquivo de imagem.
+    - Variações do produto (variations): Um array de strings com TODAS as variações disponíveis (ex: "Cor: Azul", "Tamanho: G", "Voltagem: 220v"). Extraia os nomes e valores exatos das variações. Se não houver, retorne um array vazio.
 
-    Além disso, estime os seguintes custos em BRL e taxas em porcentagem, baseando-se no tipo de produto e no seu preço de venda:
+    Além disso, com base nos dados extraídos do produto, ESTIME os seguintes custos em BRL e taxas em porcentagem:
     - Custo de aquisição (acquisition)
     - Custo de embalagem (packagingCost)
     - Taxa de anúncio (adFee)
@@ -28,8 +33,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
     - Custo de armazenagem (storage)
     - Taxa de devolução (returnRate) em porcentagem (ex: 3 para 3%).
 
-    Forneça a resposta em formato JSON. Não inclua nenhum texto antes ou depois do objeto JSON.
-    Se um valor não puder ser encontrado, use um padrão razoável ou 0. Para dimensões e peso, forneça estimativas realistas se não forem mencionadas explicitamente.
+    Forneça a resposta APENAS como um objeto JSON. Não inclua nenhum texto, formatação markdown ou comentários antes ou depois do JSON.
   `;
 
   const responseSchema = {
@@ -39,7 +43,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
       length: { type: Type.NUMBER, description: 'Comprimento do produto em cm' },
       width: { type: Type.NUMBER, description: 'Largura do produto em cm' },
       height: { type: Type.NUMBER, description: 'Altura do produto em cm' },
-      weight: { type: Type.NUMBER, a: 'Peso do produto em kg' },
+      weight: { type: Type.NUMBER, description: 'Peso do produto em kg' },
       sellingPrice: { type: Type.NUMBER, description: 'Preço de venda do produto' },
       imageUrl: { type: Type.STRING, description: 'URL da imagem principal do produto' },
       acquisition: { type: Type.NUMBER, description: 'Custo de aquisição estimado do produto em BRL' },

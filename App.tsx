@@ -38,6 +38,7 @@ function App() {
       // Cost definitions
       const fixedCosts = data.storage + data.marketing + data.adFee;
       const baseVariableCosts = data.acquisition + data.packagingCost + mp.shippingCost;
+      const baseAndFixedCosts = baseVariableCosts + fixedCosts;
       const allSellerCostsForInvestment = data.acquisition + data.packagingCost + fixedCosts;
 
       // Rate definitions (as decimals)
@@ -65,31 +66,38 @@ function App() {
       const contributionMarginPerUnit = data.sellingPrice * (1 - totalVariableRatesOnPrice) - baseVariableCosts;
       const breakEvenUnits = fixedCosts > 0 && contributionMarginPerUnit > 0 ? Math.ceil(fixedCosts / contributionMarginPerUnit) : 0;
 
-      // Ideal selling price calculation
+      // Break-even and Ideal selling price calculation
       const desiredMarginRate = data.desiredProfitMargin / 100;
-      const allRates = desiredMarginRate + totalVariableRatesOnPrice;
+      
+      let breakEvenPrice = 0;
+      if (totalVariableRatesOnPrice < 1) {
+        breakEvenPrice = baseAndFixedCosts / (1 - totalVariableRatesOnPrice);
+      }
+      
       let idealSellingPrice = 0;
-      if (allRates < 1) {
-          idealSellingPrice = (baseVariableCosts + fixedCosts) / (1 - allRates);
+      const allRatesForIdealPrice = desiredMarginRate + totalVariableRatesOnPrice;
+      if (allRatesForIdealPrice < 1) {
+          idealSellingPrice = baseAndFixedCosts / (1 - allRatesForIdealPrice);
       }
 
       // Viability Analysis
       let viabilityAnalysis = '';
       const idealSellingPriceFormatted = idealSellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const breakEvenPriceFormatted = breakEvenPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       
-      if (idealSellingPrice <= 0 || (data.sellingPrice > 0 && idealSellingPrice > data.sellingPrice * 3)) {
-          viabilityAnalysis = `Inviável. Custos e taxas são muito altos para a margem de ${data.desiredProfitMargin}% desejada. Atingir a lucratividade exigiria um preço irrealista.`;
+      if (breakEvenPrice <= 0 || idealSellingPrice <= 0) {
+          viabilityAnalysis = `Inviável. As taxas e comissões somam 100% ou mais da venda. A operação não é sustentável neste marketplace.`;
       } else if (netProfit > 0 && profitMargin >= data.desiredProfitMargin) {
           viabilityAnalysis = `Excelente. Seu preço atual já atinge a margem de lucro desejada. Venda altamente recomendada.`;
       } else if (netProfit > 0) {
           viabilityAnalysis = `Viável. O produto é lucrativo, mas para atingir sua meta de ${data.desiredProfitMargin}%, considere ajustar o preço para ${idealSellingPriceFormatted}.`;
       } else { // netProfit <= 0
-          viabilityAnalysis = `Não recomendado. A venda no preço atual gera prejuízo. Para atingir sua meta, o preço deveria ser ${idealSellingPriceFormatted}. Avalie se este valor é competitivo.`;
+          viabilityAnalysis = `Não recomendado. A venda no preço atual gera prejuízo. O preço mínimo para cobrir os custos é ${breakEvenPriceFormatted}. Para atingir sua meta, o preço deveria ser ${idealSellingPriceFormatted}.`;
       }
 
       return {
         ...mp,
-        packagingCost: data.packagingCost, // Pass through for details display
+        packagingCost: data.packagingCost,
         adFee: data.adFee,
         marketing: data.marketing,
         storage: data.storage,
@@ -105,6 +113,7 @@ function App() {
         roi,
         breakEvenUnits,
         idealSellingPrice,
+        breakEvenPrice,
         viabilityAnalysis,
       };
     });

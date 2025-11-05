@@ -55,6 +55,10 @@ const FinancialDetails: React.FC<{ marketplace: MarketplaceResult }> = ({ market
                             <span className="font-mono">{formatCurrency(item.value)}</span>
                         </li>
                     ))}
+                     <li className="flex justify-between font-bold border-t border-gray-200 dark:border-gray-600 pt-1 mt-1">
+                        <span>Total de Custos por Unidade:</span>
+                        <span className="font-mono">{formatCurrency(marketplace.totalCosts)}</span>
+                    </li>
                 </ul>
             </div>
              <div>
@@ -67,6 +71,7 @@ const FinancialDetails: React.FC<{ marketplace: MarketplaceResult }> = ({ market
             </div>
              <div>
                 <h5 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Otimização de Preço</h5>
+                 <p>Preço mínimo para cobrir custos (equilíbrio): <span className="font-bold text-yellow-600 dark:text-yellow-400">{formatCurrency(marketplace.breakEvenPrice)}</span></p>
                  <p>Preço sugerido para sua margem de lucro desejada: <span className="font-bold text-blue-500 dark:text-blue-400">{formatCurrency(marketplace.idealSellingPrice)}</span></p>
             </div>
         </div>
@@ -112,7 +117,7 @@ const ViabilityAnalysisDisplay: React.FC<{ analysis: string }> = ({ analysis }) 
 };
 
 
-const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: boolean; isExpanded: boolean; onToggle: () => void; }> = ({ marketplace, isBestOption, isExpanded, onToggle }) => {
+const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: boolean; isExpanded: boolean; onToggle: () => void; }> = ({ marketplace, isBestOption, onToggle }) => {
     const isProfitable = marketplace.profitMargin > 0;
     const profitMarginColor = isProfitable ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
 
@@ -147,10 +152,10 @@ const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: 
                  <ViabilityAnalysisDisplay analysis={marketplace.viabilityAnalysis} />
                  <div className="mt-4">
                      <button onClick={onToggle} className="text-sm text-blue-600 dark:text-blue-400 hover:underline w-full text-center">
-                         {isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes Financeiros'}
+                         {marketplace.isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes Financeiros'}
                      </button>
                  </div>
-                 {isExpanded && <FinancialDetails marketplace={marketplace} />}
+                 {marketplace.isExpanded && <FinancialDetails marketplace={marketplace} />}
             </div>
         </div>
     );
@@ -263,13 +268,23 @@ const StrategicRecommendationDisplay: React.FC<{ recommendation: StrategicRecomm
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoading, error, formData }) => {
   const [progress, setProgress] = useState(0);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [marketplaces, setMarketplaces] = useState<(MarketplaceResult & { isExpanded: boolean })[]>([]);
+
+  useEffect(() => {
+    if (results) {
+      setMarketplaces(
+        results.calculatedMarketplaces
+          .sort((a, b) => b.netProfit - a.netProfit)
+          .map(mp => ({ ...mp, isExpanded: false }))
+      );
+    }
+  }, [results]);
 
   useEffect(() => {
     let timer: number;
     if (isLoading) {
       setProgress(0);
-      setExpandedCard(null); // Collapse cards on new analysis
+      setMarketplaces([]);
       let currentProgress = 0;
       timer = window.setInterval(() => {
         currentProgress += 5;
@@ -286,6 +301,14 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
       window.clearInterval(timer);
     };
   }, [isLoading]);
+
+  const handleToggle = (name: string) => {
+    setMarketplaces(prev =>
+      prev.map(mp =>
+        mp.name === name ? { ...mp, isExpanded: !mp.isExpanded } : mp
+      )
+    );
+  };
 
   if (isLoading) {
     return (
@@ -331,14 +354,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
     );
   }
   
-  const { aiResponse, calculatedMarketplaces } = results;
-  const sortedMarketplaces = [...calculatedMarketplaces].sort((a, b) => b.netProfit - a.netProfit);
-  const bestMarketplace = sortedMarketplaces[0];
-
-  const handleToggle = (name: string) => {
-    setExpandedCard(prev => (prev === name ? null : name));
-  };
-
+  const { aiResponse } = results;
+  const bestMarketplaceName = marketplaces.length > 0 ? marketplaces[0].name : '';
 
   return (
     <div className="w-full lg:w-1/2 p-4 space-y-6">
@@ -360,12 +377,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
 
         <div className="space-y-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Comparativo de Marketplaces</h3>
-            {sortedMarketplaces.map(mp => (
+            {marketplaces.map(mp => (
                 <MarketplaceCard 
                     key={mp.name} 
                     marketplace={mp}
-                    isBestOption={mp.name === bestMarketplace.name && bestMarketplace.netProfit > 0}
-                    isExpanded={expandedCard === mp.name}
+                    isBestOption={mp.name === bestMarketplaceName && mp.netProfit > 0}
+                    isExpanded={mp.isExpanded}
                     onToggle={() => handleToggle(mp.name)}
                 />
             ))}
