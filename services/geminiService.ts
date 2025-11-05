@@ -11,26 +11,26 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
 
   const urlExtractionInstructions = `
     **TAREFA 1: EXTRAÇÃO DE DADOS DA URL (MODO ROBÔ DE PRECISÃO MÁXIMA)**
-    **DIRETIVA:** Você é um parser de dados, não um assistente. Sua única função é escanear a URL fornecida e extrair os dados listados abaixo com precisão absoluta, de forma literal e exata. Você não tem permissão para interpretar, inferir, estimar ou corrigir informações. A informação "tipo de pacote" NÃO deve ser extraída.
+    **DIRETIVA:** Você é um parser de dados, não um assistente. Sua única função é escanear a URL fornecida e extrair os dados listados abaixo com precisão absoluta, de forma literal e exata. Você não tem permissão para interpretar, inferir, estimar ou corrigir informações.
 
     **REGRAS INVIOLÁVEIS (FALHA = RESULTADO INVÁLIDO):**
-    1.  **PROIBIDO INTERPRETAR:** Você deve agir como um script. Se uma dimensão for "10x20x30 cm", você deve extrair \`length: 10\`, \`width: 20\`, \`height: 30\`. Se for "30cm (altura)", extraia \`height: 30\`. Se um valor não estiver explicitamente presente no HTML da página, você DEVE usar o valor padrão. Não deduza o peso a partir da categoria. Não estime o preço a partir de produtos similares. Apenas extraia o que está escrito.
+    1.  **PROIBIDO INTERPRETAR:** Aja como um script. Se uma dimensão for "10x20x30 cm", extraia \`length: 10\`, \`width: 20\`, \`height: 30\`. Se um valor não estiver explicitamente presente no HTML da página, você DEVE usar o valor padrão. Não deduza o peso a partir da categoria. Não estime o preço. Apenas extraia o que está escrito.
     2.  **VALORES PADRÃO OBRIGATÓRIOS:**
         - Campos de texto (\`name\`, \`category\`, \`imageUrl\`): \`""\` se ausente.
         - Campos numéricos (preço, dimensões, peso): \`0\` se ausente.
         - Campo de variações (array de strings): \`[]\` se ausente.
-    3.  **EXTRAÇÃO LITERAL E COMPLETA:** Copie os valores exatamente como aparecem. Para \`variations\`, extraia TODAS as variações disponíveis (cores, tamanhos, voltagens, etc.) sem exceção. Para \`name\`, extraia o título completo do produto.
+    3.  **EXTRAÇÃO LITERAL E COMPLETA:** Copie os valores exatamente como aparecem.
 
-    **DADOS A SEREM EXTRAÍDOS DA URL:**
+    **DADOS A SEREM EXTRAÍDOS E REGRAS ESPECÍFICAS:**
     - \`name\`: O título completo e exato do produto.
     - \`category\`: A categoria exata.
-    - \`sellingPrice\`: O preço de venda principal.
+    - \`sellingPrice\`: O preço de venda principal. **REGRA:** Extraia o preço final para pagamento à vista. Se houver um preço com desconto e um preço original (riscado), extraia o preço com desconto. Ignore preços parcelados. O valor deve ser um número, sem "R$".
     - \`length\`: Comprimento em cm.
     - \`width\`: Largura em cm.
     - \`height\`: Altura em cm.
     - \`weight\`: Peso em kg.
     - \`imageUrl\`: URL da imagem principal.
-    - \`variations\`: Array de strings com TODAS as variações listadas (cor, tamanho, etc.).
+    - \`variations\`: Array de strings com TODAS as variações listadas. **REGRA:** Procure por opções selecionáveis como "Cor", "Tamanho", "Voltagem", etc. Extraia todos os valores disponíveis para cada tipo de variação (ex: ["Preto", "Branco", "P", "M", "G", "110v", "220v"]).
   `;
 
   const textInterpretationInstructions = `
@@ -38,18 +38,18 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
     **DIRETIVA:** Sua tarefa é interpretar a descrição do produto e preencher os dados solicitados.
     
     **REGRAS:**
-    1.  **INFERÊNCIA CUIDADOSA:** Tente extrair o nome e a categoria da forma mais precisa possível a partir do texto.
-    2.  **ESTIMATIVA REALISTA:** Se dados como dimensões, peso ou preço não forem mencionados, estime valores realistas com base no tipo de produto descrito.
-    3.  **VARIAÇÕES:** Infira possíveis variações que façam sentido para o produto.
+    1.  **EXTRAÇÃO PRIMEIRO, ESTIMATIVA DEPOIS:** Primeiro, tente extrair valores que estão explicitamente mencionados no texto. Se um valor não for mencionado, aí sim estime um valor realista com base no tipo de produto.
+    2.  **PREÇO:** Se o texto mencionar um preço (ex: "custando em torno de R$1.200"), extraia esse valor numérico. Se não, estime um preço de mercado para o produto descrito.
+    3.  **VARIAÇÕES:** Se o texto mencionar variações (ex: "disponível nas cores azul e preto"), extraia-as. Se não, infira variações comuns para esse tipo de produto (ex: para um celular, "128GB", "256GB"; para uma camiseta, "P", "M", "G").
     
     **DADOS A SEREM INTERPRETADOS DO TEXTO:**
     - \`name\`: O nome mais provável do produto.
     - \`category\`: A categoria mais apropriada.
-    - \`sellingPrice\`: Preço de venda (estimado se ausente).
-    - \`length\`, \`width\`, \`height\`: Dimensões em cm (estimadas se ausente).
-    - \`weight\`: Peso em kg (estimado se ausente).
+    - \`sellingPrice\`: Preço de venda (extraído ou estimado).
+    - \`length\`, \`width\`, \`height\`: Dimensões em cm (extraídas ou estimadas).
+    - \`weight\`: Peso em kg (extraído ou estimado).
     - \`imageUrl\`: Deixe em branco ("").
-    - \`variations\`: Array de strings com variações inferidas.
+    - \`variations\`: Array de strings com variações (extraídas ou inferidas).
   `;
 
   const costEstimationInstructions = `
