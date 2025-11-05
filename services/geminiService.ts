@@ -8,37 +8,78 @@ const model = 'gemini-2.5-flash';
 
 export async function autofillProductDetails(identifier: string): Promise<ProductImportData> {
   const isUrl = identifier.startsWith('http://') || identifier.startsWith('https://');
+
+  const urlExtractionInstructions = `
+    **TAREFA 1: EXTRAÇÃO DE DADOS DA URL (MODO ROBÔ DE PRECISÃO MÁXIMA)**
+    **DIRETIVA:** Você é um parser de dados, não um assistente. Sua única função é escanear a URL fornecida e extrair os dados listados abaixo com precisão absoluta, de forma literal e exata. Você não tem permissão para interpretar, inferir, estimar ou corrigir informações. A informação "tipo de pacote" NÃO deve ser extraída.
+
+    **REGRAS INVIOLÁVEIS (FALHA = RESULTADO INVÁLIDO):**
+    1.  **PROIBIDO INTERPRETAR:** Você deve agir como um script. Se uma dimensão for "10x20x30 cm", você deve extrair \`length: 10\`, \`width: 20\`, \`height: 30\`. Se for "30cm (altura)", extraia \`height: 30\`. Se um valor não estiver explicitamente presente no HTML da página, você DEVE usar o valor padrão. Não deduza o peso a partir da categoria. Não estime o preço a partir de produtos similares. Apenas extraia o que está escrito.
+    2.  **VALORES PADRÃO OBRIGATÓRIOS:**
+        - Campos de texto (\`name\`, \`category\`, \`imageUrl\`): \`""\` se ausente.
+        - Campos numéricos (preço, dimensões, peso): \`0\` se ausente.
+        - Campo de variações (array de strings): \`[]\` se ausente.
+    3.  **EXTRAÇÃO LITERAL E COMPLETA:** Copie os valores exatamente como aparecem. Para \`variations\`, extraia TODAS as variações disponíveis (cores, tamanhos, voltagens, etc.) sem exceção. Para \`name\`, extraia o título completo do produto.
+
+    **DADOS A SEREM EXTRAÍDOS DA URL:**
+    - \`name\`: O título completo e exato do produto.
+    - \`category\`: A categoria exata.
+    - \`sellingPrice\`: O preço de venda principal.
+    - \`length\`: Comprimento em cm.
+    - \`width\`: Largura em cm.
+    - \`height\`: Altura em cm.
+    - \`weight\`: Peso em kg.
+    - \`imageUrl\`: URL da imagem principal.
+    - \`variations\`: Array de strings com TODAS as variações listadas (cor, tamanho, etc.).
+  `;
+
+  const textInterpretationInstructions = `
+    **TAREFA 1: INTERPRETAÇÃO DE DADOS DO TEXTO**
+    **DIRETIVA:** Sua tarefa é interpretar a descrição do produto e preencher os dados solicitados.
+    
+    **REGRAS:**
+    1.  **INFERÊNCIA CUIDADOSA:** Tente extrair o nome e a categoria da forma mais precisa possível a partir do texto.
+    2.  **ESTIMATIVA REALISTA:** Se dados como dimensões, peso ou preço não forem mencionados, estime valores realistas com base no tipo de produto descrito.
+    3.  **VARIAÇÕES:** Infira possíveis variações que façam sentido para o produto.
+    
+    **DADOS A SEREM INTERPRETADOS DO TEXTO:**
+    - \`name\`: O nome mais provável do produto.
+    - \`category\`: A categoria mais apropriada.
+    - \`sellingPrice\`: Preço de venda (estimado se ausente).
+    - \`length\`, \`width\`, \`height\`: Dimensões em cm (estimadas se ausente).
+    - \`weight\`: Peso em kg (estimado se ausente).
+    - \`imageUrl\`: Deixe em branco ("").
+    - \`variations\`: Array de strings com variações inferidas.
+  `;
+
+  const costEstimationInstructions = `
+    **TAREFA 2: ESTIMATIVA DE CUSTOS (MODO CONSULTOR)**
+    **DIRETIVA:** Com base nos dados obtidos na TAREFA 1, agora atue como um consultor de e-commerce e estime os seguintes custos operacionais de forma realista.
+    
+    **CUSTOS A SEREM ESTIMADOS (SEMPRE):**
+    - \`acquisition\`: Custo de aquisição (BRL).
+    - \`packagingCost\`: Custo de embalagem (BRL).
+    - \`adFee\`: Taxa de anúncio (BRL).
+    - \`marketing\`: Custo com marketing (BRL).
+    - \`storage\`: Custo de armazenagem (BRL).
+    - \`returnRate\`: Taxa de devolução (%, ex: 3 para 3%).
+  `;
+
   const prompt = `
-    Sua tarefa é analisar um produto e retornar seus detalhes em formato JSON.
+    Sua tarefa é dividida em duas partes: primeiro extrair/interpretar dados de um produto, e depois estimar seus custos. Retorne um único objeto JSON com o resultado de ambas as tarefas.
     O produto é identificado por: "${identifier}".
 
-    ${isUrl 
-      ? `Isto é uma URL de um anúncio de marketplace. Aja como um extrator de dados preciso. Sua prioridade máxima é extrair os valores EXATOS que estão na página. NÃO invente valores se eles estiverem disponíveis no anúncio. Para dimensões e peso, procure exaustivamente na ficha técnica ou descrição; somente se for absolutamente impossível encontrar, você pode estimar.`
-      : `Isto é uma descrição de texto. Extraia as informações da descrição. Se alguns dados não estiverem presentes, estime valores realistas com base no produto descrito.`
-    }
-    
-    Extraia as seguintes informações:
-    - Categoria do produto (category): A categoria exata listada no anúncio.
-    - Dimensões: comprimento (length), largura (width), altura (height) em cm.
-    - Peso (weight) em kg.
-    - Preço de venda (sellingPrice) em BRL: O preço principal e visível do produto.
-    - URL da imagem principal (imageUrl): URL completa, pública e direta para o arquivo de imagem.
-    - Variações do produto (variations): Um array de strings com TODAS as variações disponíveis (ex: "Cor: Azul", "Tamanho: G", "Voltagem: 220v"). Extraia os nomes e valores exatos das variações. Se não houver, retorne um array vazio.
+    ${isUrl ? urlExtractionInstructions : textInterpretationInstructions}
 
-    Além disso, com base nos dados extraídos do produto, ESTIME os seguintes custos em BRL e taxas em porcentagem:
-    - Custo de aquisição (acquisition)
-    - Custo de embalagem (packagingCost)
-    - Taxa de anúncio (adFee)
-    - Custo com marketing (marketing)
-    - Custo de armazenagem (storage)
-    - Taxa de devolução (returnRate) em porcentagem (ex: 3 para 3%).
+    ${costEstimationInstructions}
 
-    Forneça a resposta APENAS como um objeto JSON. Não inclua nenhum texto, formatação markdown ou comentários antes ou depois do JSON.
+    Forneça a resposta **APENAS** como um objeto JSON. Não inclua texto ou formatação markdown.
   `;
 
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
+      name: { type: Type.STRING, description: 'Nome/Título completo do produto' },
       category: { type: Type.STRING, description: 'Categoria do produto' },
       length: { type: Type.NUMBER, description: 'Comprimento do produto em cm' },
       width: { type: Type.NUMBER, description: 'Largura do produto em cm' },
@@ -54,7 +95,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
       returnRate: { type: Type.NUMBER, description: 'Taxa de devolução estimada em porcentagem (ex: 3 para 3%)' },
       variations: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Variações do produto como cor, tamanho, etc.' },
     },
-    required: ['category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl', 'acquisition', 'packagingCost', 'adFee', 'marketing', 'storage', 'returnRate', 'variations'],
+    required: ['name', 'category', 'length', 'width', 'height', 'weight', 'sellingPrice', 'imageUrl', 'acquisition', 'packagingCost', 'adFee', 'marketing', 'storage', 'returnRate', 'variations'],
   };
   
   try {

@@ -5,6 +5,7 @@ import { FormData, CalculationResults, MarketplaceResult, GeminiAnalysisResponse
 import { getFinancialAnalysis } from './services/geminiService';
 
 const initialFormData: FormData = {
+  name: '',
   category: '',
   length: 0,
   width: 0,

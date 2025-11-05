@@ -1,4 +1,5 @@
 export interface ProductInfo {
+  name: string;
   category: string;
   length: number;
   width: number;
@@ -27,6 +28,7 @@ export interface FormData extends ProductInfo, CostInfo, LocationInfo {
 }
 
 export interface ProductImportData {
+  name: string;
   category: string;
   length: number;
   width: number;

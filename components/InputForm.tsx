@@ -89,6 +89,7 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
       const data = await autofillProductDetails(productIdentifier);
       const newFormData = {
         ...formData,
+        name: data.name || formData.name,
         category: data.category || formData.category,
         length: data.length || formData.length,
         width: data.width || formData.width,
@@ -208,6 +209,10 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
                     </div>
                 )}
             </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <InputField label="Nome do Produto" name="name" value={formData.name} onChange={handleChange} type="text" placeholder="Ex: Smartphone Samsung S23 128GB" />
         </div>
         
         <div>
