@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CalculationResults, MarketplaceResult, StrategicRecommendation, SalesScenario, FormData, GeminiAnalysisResponse } from '../types';
+import html2canvas from 'html2canvas';
 
 interface ResultsDisplayProps {
   results: CalculationResults | null;
@@ -117,12 +118,43 @@ const ViabilityAnalysisDisplay: React.FC<{ analysis: string }> = ({ analysis }) 
 };
 
 
-const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: boolean; isExpanded: boolean; onToggle: () => void; }> = ({ marketplace, isBestOption, onToggle }) => {
+const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult & { isExpanded: boolean }; isBestOption: boolean; onToggle: () => void; }> = ({ marketplace, isBestOption, onToggle }) => {
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const { isExpanded } = marketplace;
+
+    const handleDownloadImage = async () => {
+        if (!cardRef.current) return;
+
+        setIsGenerating(true);
+
+        try {
+            const canvas = await html2canvas(cardRef.current, {
+                useCORS: true,
+                scale: 2,
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            });
+            const image = canvas.toDataURL('image/png', 1.0);
+            
+            const link = document.createElement('a');
+            link.href = image;
+            link.download = `${marketplace.name.toLowerCase().replace(/\s+/g, '-')}-analise.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error('Erro ao gerar a imagem:', error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
     const isProfitable = marketplace.profitMargin > 0;
     const profitMarginColor = isProfitable ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
 
     return (
-        <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex flex-col justify-between transition-all duration-300 border-2 border-transparent hover:border-blue-500">
+        <div ref={cardRef} className="relative bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex flex-col justify-between transition-all duration-300 border-2 border-transparent hover:border-blue-500">
             {isBestOption && (
                 <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg z-10">
                     Melhor Opção
@@ -150,12 +182,40 @@ const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: 
                     </div>
                 </div>
                  <ViabilityAnalysisDisplay analysis={marketplace.viabilityAnalysis} />
-                 <div className="mt-4">
-                     <button onClick={onToggle} className="text-sm text-blue-600 dark:text-blue-400 hover:underline w-full text-center">
-                         {marketplace.isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes Financeiros'}
-                     </button>
+
+                 {isExpanded && <FinancialDetails marketplace={marketplace} />}
+
+                 <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center space-x-6">
+                    <button onClick={onToggle} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d={isExpanded ? "M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" : "M12 9v3m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
+                        </svg>
+                        {isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes'}
+                    </button>
+                    
+                    <button 
+                        onClick={handleDownloadImage} 
+                        disabled={isGenerating}
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:underline disabled:opacity-50 disabled:cursor-wait flex items-center transition-colors"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Gerando...
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Baixar Análise
+                            </>
+                        )}
+                    </button>
                  </div>
-                 {marketplace.isExpanded && <FinancialDetails marketplace={marketplace} />}
             </div>
         </div>
     );
@@ -382,7 +442,6 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
                     key={mp.name} 
                     marketplace={mp}
                     isBestOption={mp.name === bestMarketplaceName && mp.netProfit > 0}
-                    isExpanded={mp.isExpanded}
                     onToggle={() => handleToggle(mp.name)}
                 />
             ))}
