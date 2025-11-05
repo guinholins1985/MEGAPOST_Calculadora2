@@ -39,7 +39,7 @@ export async function autofillProductDetails(identifier: string): Promise<Produc
       length: { type: Type.NUMBER, description: 'Comprimento do produto em cm' },
       width: { type: Type.NUMBER, description: 'Largura do produto em cm' },
       height: { type: Type.NUMBER, description: 'Altura do produto em cm' },
-      weight: { type: Type.NUMBER, description: 'Peso do produto em kg' },
+      weight: { type: Type.NUMBER, a: 'Peso do produto em kg' },
       sellingPrice: { type: Type.NUMBER, description: 'Preço de venda do produto' },
       imageUrl: { type: Type.STRING, description: 'URL da imagem principal do produto' },
       acquisition: { type: Type.NUMBER, description: 'Custo de aquisição estimado do produto em BRL' },
@@ -95,12 +95,24 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
         *   \`reason\`: Uma breve explicação para sua escolha, considerando proteção e custos de envio.
     3.  \`marketplaceComparison\`: Um array de objetos, um para cada marketplace (Mercado Livre, Amazon Brasil, Magazine Luiza, Shopee, OLX). Cada objeto deve conter:
         *   \`name\`: O nome do marketplace.
-        *   \`feeRate\`: A taxa de comissão estimada como um decimal para esta categoria.
+        *   \`feeRate\`: A taxa de comissão de venda estimada como um decimal para esta categoria (NÃO inclua taxas de pagamento aqui).
+        *   \`paymentFeeRate\`: A taxa de processamento de pagamento (cartão, etc.) como um decimal. Se já estiver 100% inclusa na \`feeRate\`, coloque 0.
         *   \`shippingCost\`: O custo de envio estimado em BRL. Deve ser uma estimativa realista para o CEP de destino, considerando tanto os programas de logística da plataforma (como Mercado Envios Full/FBA) quanto os custos padrão dos Correios (PAC/SEDEX) como base de cálculo.
         *   \`shippingInfo\`: Uma breve explicação sobre o programa de frete deles.
         *   \`pros\`: Um array de strings listando as vantagens de vender este produto nesta plataforma.
         *   \`cons\`: Um array de strings listando as desvantagens.
-    4.  \`strategicRecommendation\`: Uma recomendação conclusiva e detalhada sobre qual marketplace é a melhor escolha para este produto específico, justificando sua escolha com base na análise. Inclua também cenários de vendas otimista, realista e pessimista para o marketplace recomendado, considerando a margem de lucro desejada.
+    4.  \`strategicRecommendation\`: Uma recomendação estratégica detalhada, estruturada da seguinte forma:
+        *   \`recommendedMarketplace\`: O nome do marketplace que você mais recomenda.
+        *   \`justification\`: Explicação clara e baseada em dados sobre por que este marketplace é a melhor escolha.
+        *   \`pricingStrategy\`: Sugestão de preço inicial e táticas de precificação (ex: anúncios premium, descontos, kits).
+        *   \`marketingActions\`: Um array com 3 a 5 ações de marketing concretas e práticas (ex: uso de Ads, otimização de título, resposta rápida a perguntas).
+        *   \`logisticsAndPackaging\`: Recomendações sobre logística (ex: usar Fullfillment) e como a embalagem sugerida impacta.
+        *   \`riskAnalysis\`: Análise dos principais riscos (ex: concorrência, devoluções) e como mitigá-los.
+        *   \`salesScenarios\`: Um objeto com três cenários de vendas mensais para o marketplace recomendado:
+            *   \`optimistic\`, \`realistic\`, \`pessimistic\`: Cada um contendo:
+                *   \`unitsSold\`: Número de unidades vendidas.
+                *   \`netProfit\`: O lucro líquido total como uma string formatada (ex: "R$ 12.500,00").
+                *   \`description\`: Uma breve descrição do cenário.
 
     Forneça APENAS o objeto JSON em sua resposta. Seja extremamente detalhado e profissional em suas explicações.
   `;
@@ -110,12 +122,45 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
     properties: {
         name: { type: Type.STRING },
         feeRate: { type: Type.NUMBER },
+        paymentFeeRate: { type: Type.NUMBER },
         shippingCost: { type: Type.NUMBER },
         shippingInfo: { type: Type.STRING },
         pros: { type: Type.ARRAY, items: { type: Type.STRING } },
         cons: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
-    required: ['name', 'feeRate', 'shippingCost', 'shippingInfo', 'pros', 'cons'],
+    required: ['name', 'feeRate', 'paymentFeeRate', 'shippingCost', 'shippingInfo', 'pros', 'cons'],
+  };
+
+  const salesScenarioSchema = {
+    type: Type.OBJECT,
+    properties: {
+        unitsSold: { type: Type.NUMBER },
+        netProfit: { type: Type.STRING },
+        description: { type: Type.STRING },
+    },
+    required: ['unitsSold', 'netProfit', 'description'],
+  };
+
+  const strategicRecommendationSchema = {
+      type: Type.OBJECT,
+      properties: {
+          recommendedMarketplace: { type: Type.STRING },
+          justification: { type: Type.STRING },
+          pricingStrategy: { type: Type.STRING },
+          marketingActions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          logisticsAndPackaging: { type: Type.STRING },
+          riskAnalysis: { type: Type.STRING },
+          salesScenarios: {
+              type: Type.OBJECT,
+              properties: {
+                  optimistic: salesScenarioSchema,
+                  realistic: salesScenarioSchema,
+                  pessimistic: salesScenarioSchema,
+              },
+              required: ['optimistic', 'realistic', 'pessimistic'],
+          },
+      },
+      required: ['recommendedMarketplace', 'justification', 'pricingStrategy', 'marketingActions', 'logisticsAndPackaging', 'riskAnalysis', 'salesScenarios'],
   };
 
   const responseSchema = {
@@ -135,7 +180,7 @@ export async function getFinancialAnalysis(formData: FormData): Promise<GeminiAn
         type: Type.ARRAY,
         items: marketplaceDetailSchema,
       },
-      strategicRecommendation: { type: Type.STRING, description: 'Recomendação estratégica e análise de cenários.' },
+      strategicRecommendation: strategicRecommendationSchema,
     },
     required: ['taxRate', 'packageSuggestion', 'marketplaceComparison', 'strategicRecommendation'],
   };

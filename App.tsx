@@ -28,30 +28,65 @@ function App() {
   const [results, setResults] = useState<CalculationResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
 
   const calculateMarketplaceMetrics = (
     aiResponse: GeminiAnalysisResponse,
     data: FormData
   ): MarketplaceResult[] => {
     return aiResponse.marketplaceComparison.map(mp => {
-      const taxValue = data.sellingPrice * aiResponse.taxRate;
-      const marketplaceFeeValue = data.sellingPrice * mp.feeRate;
-      const returnCost = data.sellingPrice * (data.returnRate / 100);
+      // Cost definitions
+      const fixedCosts = data.storage + data.marketing + data.adFee;
+      const baseVariableCosts = data.acquisition + data.packagingCost + mp.shippingCost;
+      const allSellerCostsForInvestment = data.acquisition + data.packagingCost + fixedCosts;
 
-      const otherCosts = data.acquisition + data.packagingCost + data.adFee + data.marketing + data.storage;
-      const totalCosts = otherCosts + taxValue + marketplaceFeeValue + mp.shippingCost + returnCost;
+      // Rate definitions (as decimals)
+      const taxRate = aiResponse.taxRate;
+      const returnRate = data.returnRate / 100;
+      const totalVariableRatesOnPrice = taxRate + mp.feeRate + mp.paymentFeeRate + returnRate;
+
+      // Value calculations for current selling price
+      const taxValue = data.sellingPrice * taxRate;
+      const marketplaceFeeValue = data.sellingPrice * mp.feeRate;
+      const paymentFeeValue = data.sellingPrice * mp.paymentFeeRate;
+      const returnCost = data.sellingPrice * returnRate;
+
+      const otherCosts = data.acquisition + data.packagingCost + fixedCosts;
+      const totalCosts = otherCosts + taxValue + marketplaceFeeValue + paymentFeeValue + mp.shippingCost + returnCost;
+      
       const netProfit = data.sellingPrice - totalCosts;
       const profitMargin = data.sellingPrice > 0 ? (netProfit / data.sellingPrice) * 100 : 0;
+
+      // NEW METRICS
+      const grossProfitMargin = data.sellingPrice > 0 ? ((data.sellingPrice - data.acquisition) / data.sellingPrice) * 100 : 0;
+      
+      const roi = allSellerCostsForInvestment > 0 ? (netProfit / allSellerCostsForInvestment) * 100 : 0;
+
+      const contributionMarginPerUnit = data.sellingPrice * (1 - totalVariableRatesOnPrice) - baseVariableCosts;
+      const breakEvenUnits = fixedCosts > 0 && contributionMarginPerUnit > 0 ? Math.ceil(fixedCosts / contributionMarginPerUnit) : 0;
+
+      // Ideal selling price calculation
+      const desiredMarginRate = data.desiredProfitMargin / 100;
+      const allRates = desiredMarginRate + totalVariableRatesOnPrice;
+      let idealSellingPrice = 0;
+      if (allRates < 1) {
+          idealSellingPrice = (fixedCosts + baseVariableCosts) / (1 - allRates);
+      }
 
       return {
         ...mp,
         taxValue,
         marketplaceFeeValue,
+        paymentFeeValue,
         returnCost,
         otherCosts,
         totalCosts,
         netProfit,
         profitMargin,
+        grossProfitMargin,
+        roi,
+        breakEvenUnits,
+        idealSellingPrice,
       };
     });
   };
@@ -97,6 +132,8 @@ function App() {
             setFormData={setFormData}
             onAnalyze={handleAnalyze}
             isLoading={isLoading}
+            productImageUrl={productImageUrl}
+            setProductImageUrl={setProductImageUrl}
           />
           <ResultsDisplay
             results={results}

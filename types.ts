@@ -46,10 +46,31 @@ export interface ProductImportData {
 export interface MarketplaceDetail {
   name: string;
   feeRate: number; // as decimal
+  paymentFeeRate: number; // NEW: as decimal for payment processing
   shippingCost: number; // Novo: Custo de frete específico
   shippingInfo: string;
   pros: string[];
   cons: string[];
+}
+
+export interface SalesScenario {
+  unitsSold: number;
+  netProfit: string;
+  description: string;
+}
+
+export interface StrategicRecommendation {
+  recommendedMarketplace: string;
+  justification: string;
+  pricingStrategy: string;
+  marketingActions: string[];
+  logisticsAndPackaging: string;
+  riskAnalysis: string;
+  salesScenarios: {
+    optimistic: SalesScenario;
+    realistic: SalesScenario;
+    pessimistic: SalesScenario;
+  };
 }
 
 export interface GeminiAnalysisResponse {
@@ -60,18 +81,24 @@ export interface GeminiAnalysisResponse {
     reason: string;
   };
   marketplaceComparison: MarketplaceDetail[];
-  strategicRecommendation: string;
+  strategicRecommendation: StrategicRecommendation;
 }
 
 // Nova interface para resultados calculados por marketplace
 export interface MarketplaceResult extends MarketplaceDetail {
     totalCosts: number;
     netProfit: number;
-    profitMargin: number;
+    profitMargin: number; // Net profit margin
     taxValue: number;
     marketplaceFeeValue: number;
+    paymentFeeValue: number; // NEW
     returnCost: number;
     otherCosts: number;
+    // NEW METRICS
+    grossProfitMargin: number;
+    roi: number;
+    breakEvenUnits: number;
+    idealSellingPrice: number;
 }
 
 export interface CalculationResults {

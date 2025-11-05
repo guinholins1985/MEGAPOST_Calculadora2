@@ -7,6 +7,8 @@ interface InputFormProps {
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   onAnalyze: (data: FormData) => void;
   isLoading: boolean;
+  productImageUrl: string | null;
+  setProductImageUrl: (url: string | null) => void;
 }
 
 const brazilianMarketplaceCategories = [
@@ -50,11 +52,10 @@ const InputField: React.FC<{ label: string; name: keyof FormData; value: string 
   </div>
 );
 
-export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onAnalyze, isLoading }) => {
+export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onAnalyze, isLoading, productImageUrl, setProductImageUrl }) => {
   const [productIdentifier, setProductIdentifier] = useState('');
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
-  const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
