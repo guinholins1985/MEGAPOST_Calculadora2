@@ -99,6 +99,7 @@ export interface MarketplaceResult extends MarketplaceDetail {
     roi: number;
     breakEvenUnits: number;
     idealSellingPrice: number;
+    viabilityAnalysis: string; // NEW
 }
 
 export interface CalculationResults {

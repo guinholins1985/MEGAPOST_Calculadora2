@@ -70,11 +70,29 @@ function App() {
       const allRates = desiredMarginRate + totalVariableRatesOnPrice;
       let idealSellingPrice = 0;
       if (allRates < 1) {
-          idealSellingPrice = (fixedCosts + baseVariableCosts) / (1 - allRates);
+          idealSellingPrice = (baseVariableCosts + fixedCosts) / (1 - allRates);
+      }
+
+      // Viability Analysis
+      let viabilityAnalysis = '';
+      const idealSellingPriceFormatted = idealSellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      
+      if (idealSellingPrice <= 0 || (data.sellingPrice > 0 && idealSellingPrice > data.sellingPrice * 3)) {
+          viabilityAnalysis = `Inviável. Custos e taxas são muito altos para a margem de ${data.desiredProfitMargin}% desejada. Atingir a lucratividade exigiria um preço irrealista.`;
+      } else if (netProfit > 0 && profitMargin >= data.desiredProfitMargin) {
+          viabilityAnalysis = `Excelente. Seu preço atual já atinge a margem de lucro desejada. Venda altamente recomendada.`;
+      } else if (netProfit > 0) {
+          viabilityAnalysis = `Viável. O produto é lucrativo, mas para atingir sua meta de ${data.desiredProfitMargin}%, considere ajustar o preço para ${idealSellingPriceFormatted}.`;
+      } else { // netProfit <= 0
+          viabilityAnalysis = `Não recomendado. A venda no preço atual gera prejuízo. Para atingir sua meta, o preço deveria ser ${idealSellingPriceFormatted}. Avalie se este valor é competitivo.`;
       }
 
       return {
         ...mp,
+        packagingCost: data.packagingCost, // Pass through for details display
+        adFee: data.adFee,
+        marketing: data.marketing,
+        storage: data.storage,
         taxValue,
         marketplaceFeeValue,
         paymentFeeValue,
@@ -87,6 +105,7 @@ function App() {
         roi,
         breakEvenUnits,
         idealSellingPrice,
+        viabilityAnalysis,
       };
     });
   };
@@ -139,6 +158,7 @@ function App() {
             results={results}
             isLoading={isLoading}
             error={error}
+            formData={formData}
           />
         </div>
       </main>

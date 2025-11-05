@@ -56,6 +56,7 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
   const [productIdentifier, setProductIdentifier] = useState('');
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
+  const [imageUrlInput, setImageUrlInput] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -103,7 +104,9 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
         returnRate: data.returnRate || formData.returnRate,
       };
       setFormData(newFormData);
-      setProductImageUrl(data.imageUrl || null);
+      if (data.imageUrl) {
+        setProductImageUrl(data.imageUrl);
+      }
       onAnalyze(newFormData); // Trigger analysis automatically
     } catch (err) {
       if (err instanceof Error) {
@@ -152,33 +155,56 @@ export const InputForm: React.FC<InputFormProps> = ({ formData, setFormData, onA
 
         <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Imagem do Produto</label>
-            <div className="mt-1 flex justify-center items-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md h-48">
+            <div className="mt-1 flex justify-center items-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md min-h-48">
                 {productImageUrl ? (
                     <div className="relative group">
                         <img src={productImageUrl} alt="Produto" className="max-h-40 rounded-lg object-contain" />
-                        <div 
-                            onClick={() => setProductImageUrl(null)} 
+                        <button
+                            onClick={() => setProductImageUrl(null)}
                             title="Remover imagem"
                             className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-600 text-white rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remover imagem"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
-                        </div>
+                        </button>
                     </div>
                 ) : (
-                    <div className="space-y-1 text-center">
+                    <div className="space-y-1 text-center w-full">
                         <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex text-sm text-gray-600 dark:text-gray-400 justify-center">
                             <label htmlFor="file-upload" className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
                                 <span>Carregar um arquivo</span>
                                 <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageUpload} accept="image/*" />
                             </label>
                             <p className="pl-1">ou arraste e solte</p>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-500">PNG, JPG, GIF</p>
+                        <div className="mt-2 text-center text-xs text-gray-500 dark:text-gray-500">ou cole uma URL abaixo</div>
+                        <div className="mt-2 flex items-center space-x-2">
+                            <input
+                                type="text"
+                                value={imageUrlInput}
+                                onChange={(e) => setImageUrlInput(e.target.value)}
+                                placeholder="https://exemplo.com/imagem.jpg"
+                                className="flex-grow bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                                aria-label="URL da Imagem"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (imageUrlInput) {
+                                        setProductImageUrl(imageUrlInput);
+                                        setImageUrlInput('');
+                                    }
+                                }}
+                                className="text-white bg-blue-500 hover:bg-blue-600 font-medium rounded-lg text-xs px-3 py-2 text-center transition-colors shrink-0"
+                            >
+                                Adicionar
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

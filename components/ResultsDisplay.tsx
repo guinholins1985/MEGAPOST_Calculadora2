@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CalculationResults, MarketplaceResult, StrategicRecommendation, SalesScenario } from '../types';
+import { CalculationResults, MarketplaceResult, StrategicRecommendation, SalesScenario, FormData, GeminiAnalysisResponse } from '../types';
 
 interface ResultsDisplayProps {
   results: CalculationResults | null;
   isLoading: boolean;
   error: string | null;
+  formData: FormData;
 }
 
 const formatCurrency = (value: number) => {
@@ -72,22 +73,78 @@ const FinancialDetails: React.FC<{ marketplace: MarketplaceResult }> = ({ market
     );
 };
 
+const ViabilityAnalysisDisplay: React.FC<{ analysis: string }> = ({ analysis }) => {
+    let icon: React.ReactNode;
+    let colorClasses = '';
+    let title = '';
 
-const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isExpanded: boolean; onToggle: () => void; }> = ({ marketplace, isExpanded, onToggle }) => {
+    if (analysis.startsWith('Excelente')) {
+        title = 'Recomendação';
+        colorClasses = 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-400';
+        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
+    } else if (analysis.startsWith('Viável')) {
+        title = 'Recomendação';
+        colorClasses = 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-400';
+        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>;
+    } else if (analysis.startsWith('Não recomendado')) {
+        title = 'Alerta';
+        colorClasses = 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-400';
+        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>;
+    } else { // Inviável
+        title = 'Alerta';
+        colorClasses = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-400';
+        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>;
+    }
+
+    return (
+        <div className={`mt-4 p-3 rounded-lg border-l-4 ${colorClasses} text-sm`}>
+            <div className="flex items-start">
+                <div className="flex-shrink-0">
+                    {icon}
+                </div>
+                <div className="ml-3">
+                    <p className="font-semibold">{title}</p>
+                    <p className="mt-1">{analysis}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isBestOption: boolean; isExpanded: boolean; onToggle: () => void; }> = ({ marketplace, isBestOption, isExpanded, onToggle }) => {
     const isProfitable = marketplace.profitMargin > 0;
     const profitMarginColor = isProfitable ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
 
     return (
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex flex-col justify-between transition-all duration-300">
+        <div className="relative bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex flex-col justify-between transition-all duration-300 border-2 border-transparent hover:border-blue-500">
+            {isBestOption && (
+                <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg z-10">
+                    Melhor Opção
+                </div>
+            )}
             <div>
                 <h4 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-4">{marketplace.name}</h4>
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span>Taxas Totais (Comissão + Pag.):</span> <span className="font-medium">{formatPercentage((marketplace.feeRate + marketplace.paymentFeeRate) * 100)} ({formatCurrency(marketplace.marketplaceFeeValue + marketplace.paymentFeeValue)})</span></div>
                     <div className="flex justify-between"><span>Custo de Frete:</span> <span className="font-medium">{formatCurrency(marketplace.shippingCost)}</span></div>
                     <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 mt-2"><span>Custos Totais:</span> <span className="font-semibold">{formatCurrency(marketplace.totalCosts)}</span></div>
-                    <div className="flex justify-between font-bold text-lg"><span>Lucro Líquido:</span> <span>{formatCurrency(marketplace.netProfit)}</span></div>
-                    <div className={`flex justify-between font-bold text-lg ${profitMarginColor}`}><span>Margem de Lucro:</span> <span>{formatPercentage(marketplace.profitMargin)}</span></div>
+                    <div className="flex justify-between font-bold text-lg items-center">
+                        <span className="flex items-center">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            Lucro Líquido:
+                        </span> 
+                        <span>{formatCurrency(marketplace.netProfit)}</span>
+                    </div>
+                    <div className={`flex justify-between font-bold text-lg items-center ${profitMarginColor}`}>
+                        <span className="flex items-center">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                             Margem de Lucro:
+                        </span>
+                        <span>{formatPercentage(marketplace.profitMargin)}</span>
+                    </div>
                 </div>
+                 <ViabilityAnalysisDisplay analysis={marketplace.viabilityAnalysis} />
                  <div className="mt-4">
                      <button onClick={onToggle} className="text-sm text-blue-600 dark:text-blue-400 hover:underline w-full text-center">
                          {isExpanded ? 'Ocultar Detalhes' : 'Ver Detalhes Financeiros'}
@@ -99,7 +156,7 @@ const MarketplaceCard: React.FC<{ marketplace: MarketplaceResult; isExpanded: bo
     );
 };
 
-const SimulationsCard: React.FC<{ results: CalculationResults }> = ({ results }) => {
+const SimulationsCard: React.FC<{ results: CalculationResults; formData: FormData }> = ({ results, formData }) => {
     const [quantity, setQuantity] = useState(50);
     const [discount, setDiscount] = useState(0);
 
@@ -118,16 +175,23 @@ const SimulationsCard: React.FC<{ results: CalculationResults }> = ({ results })
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Resultados da Simulação:</h4>
                   <ul className="space-y-2 text-sm">
                       {results.calculatedMarketplaces.map(mp => {
-                          const discountedPrice = mp.idealSellingPrice * (1 - discount / 100);
-                          const newNetProfit = discountedPrice - mp.totalCosts; // Simplified for this simulation
-                          const totalProjectedProfit = newNetProfit * quantity;
+                          const newSellingPrice = formData.sellingPrice * (1 - discount / 100);
+                          const taxValue = newSellingPrice * results.aiResponse.taxRate;
+                          const marketplaceFeeValue = newSellingPrice * mp.feeRate;
+                          const paymentFeeValue = newSellingPrice * mp.paymentFeeRate;
+                          const returnCost = newSellingPrice * (formData.returnRate / 100);
+                          const fixedCosts = formData.storage + formData.marketing + formData.adFee;
+                          const baseVariableCosts = formData.acquisition + formData.packagingCost + mp.shippingCost;
+                          const totalCosts = fixedCosts + baseVariableCosts + taxValue + marketplaceFeeValue + paymentFeeValue + returnCost;
+                          const newNetProfitPerUnit = newSellingPrice - totalCosts;
+                          const totalProjectedProfit = newNetProfitPerUnit * quantity;
 
                           return (
                               <li key={mp.name} className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
                                   <p className="font-bold">{mp.name}</p>
                                   <div className="flex justify-between">
                                       <span>Lucro Total Projetado:</span>
-                                      <span className={totalProjectedProfit > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{formatCurrency(totalProjectedProfit)}</span>
+                                      <span className={`font-bold ${totalProjectedProfit > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(totalProjectedProfit)}</span>
                                   </div>
                               </li>
                           )
@@ -152,6 +216,22 @@ const StrategicRecommendationDisplay: React.FC<{ recommendation: StrategicRecomm
             </div>
         </div>
     );
+    
+    const InfoSection: React.FC<{ title: string, content: string | string[], icon: React.ReactNode}> = ({ title, content, icon }) => (
+        <div>
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-1 flex items-center">
+                {icon}
+                <span className="ml-2">{title}</span>
+            </h4>
+            {Array.isArray(content) ? (
+                 <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400 pl-2">
+                    {content.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+            ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-400 pl-2">{content}</p>
+            )}
+        </div>
+    );
 
     return (
         <div className="space-y-4">
@@ -159,35 +239,17 @@ const StrategicRecommendationDisplay: React.FC<{ recommendation: StrategicRecomm
                 Marketplace Recomendado: <span className="font-bold text-blue-600 dark:text-blue-400">{recommendedMarketplace}</span>
             </p>
             
-            <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Justificativa</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{justification}</p>
-            </div>
+            <InfoSection title="Justificativa" content={justification} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+            <InfoSection title="Estratégia de Preço" content={pricingStrategy} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" /><path d="M7 13h10M7 17h5" /></svg>} />
+            <InfoSection title="Ações de Marketing" content={marketingActions} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.584C18.354 1.832 18 3.65 18 4.5v.553a2.25 2.25 0 01-4.5 0V5.5" /></svg>} />
+            <InfoSection title="Logística e Embalagem" content={logisticsAndPackaging} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} />
+            <InfoSection title="Análise de Riscos" content={riskAnalysis} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>} />
 
             <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Estratégia de Preço</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{pricingStrategy}</p>
-            </div>
-
-             <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Ações de Marketing</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    {marketingActions.map((action, i) => <li key={i}>{action}</li>)}
-                </ul>
-            </div>
-
-            <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Logística e Embalagem</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{logisticsAndPackaging}</p>
-            </div>
-
-            <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Análise de Riscos</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{riskAnalysis}</p>
-            </div>
-
-            <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Cenários de Vendas Mensais</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <span className="ml-2">Cenários de Vendas Mensais</span>
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Scenario title="Pessimista" data={salesScenarios.pessimistic} />
                     <Scenario title="Realista" data={salesScenarios.realistic} />
@@ -199,7 +261,7 @@ const StrategicRecommendationDisplay: React.FC<{ recommendation: StrategicRecomm
 };
 
 
-export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoading, error }) => {
+export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoading, error, formData }) => {
   const [progress, setProgress] = useState(0);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
@@ -271,6 +333,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
   
   const { aiResponse, calculatedMarketplaces } = results;
   const sortedMarketplaces = [...calculatedMarketplaces].sort((a, b) => b.netProfit - a.netProfit);
+  const bestMarketplace = sortedMarketplaces[0];
 
   const handleToggle = (name: string) => {
     setExpandedCard(prev => (prev === name ? null : name));
@@ -293,14 +356,15 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, isLoadi
             </div>
         </ResultCard>
 
-        {results && <SimulationsCard results={results} />}
+        {results && <SimulationsCard results={results} formData={formData} />}
 
         <div className="space-y-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Comparativo de Marketplaces</h3>
             {sortedMarketplaces.map(mp => (
                 <MarketplaceCard 
                     key={mp.name} 
-                    marketplace={mp} 
+                    marketplace={mp}
+                    isBestOption={mp.name === bestMarketplace.name && bestMarketplace.netProfit > 0}
                     isExpanded={expandedCard === mp.name}
                     onToggle={() => handleToggle(mp.name)}
                 />
